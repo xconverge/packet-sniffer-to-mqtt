@@ -6,6 +6,7 @@ ETH_IFACE="${ETH_IFACE:-$(ip route show default | awk '/default/ {print $5; exit
 AP_SSID="${AP_SSID:-ap_ssid}"
 AP_PASSWORD="${AP_PASSWORD:-ap_password}"
 AP_COUNTRY="${AP_COUNTRY:-US}"
+AP_CHANNEL="${AP_CHANNEL:-6}"
 
 # Set regulatory domain so the adapter can use its full legal TX power
 iw reg set "${AP_COUNTRY}"
@@ -18,7 +19,7 @@ interface=${WLAN_IFACE}
 driver=nl80211
 ssid=${AP_SSID}
 hw_mode=g
-channel=7
+channel=${AP_CHANNEL}
 wmm_enabled=1
 country_code=${AP_COUNTRY}
 ieee80211d=1
