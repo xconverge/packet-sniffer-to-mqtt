@@ -2,7 +2,7 @@ services:
   mqtt-sniffer:
     build: .
     container_name: mqtt-sniffer
-    # Host networking is required so the container can see wlan0
+    # Host networking is required so the container can see the WiFi adapter
     network_mode: host
     # Privileged is required for hostapd (WiFi chip control),
     # scapy raw sockets, and iptables rule management
