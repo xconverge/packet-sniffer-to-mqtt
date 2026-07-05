@@ -12,7 +12,7 @@ TOPIC = os.environ.get("MQTT_TOPIC", "captured")
 WLAN_IFACE = os.environ.get("WLAN_IFACE", "wlan0")
 
 # Initialize MQTT client
-mqtt_client = mqtt.Client()
+mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
 
 def connect_mqtt():
