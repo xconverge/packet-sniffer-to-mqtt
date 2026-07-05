@@ -63,7 +63,8 @@ def process_packet(packet):
                     topic_per_device = f"{TOPIC}/{dsn}"
 
                     mqtt_client.publish(topic_per_device, json.dumps(parsed_payload))
-                    print(f"Published to {topic_per_device}")
+                    if verbose:
+                        print(f"Published to {topic_per_device}")
                 except (UnicodeDecodeError, json.JSONDecodeError) as e:
                     if verbose:
                         print(f"Error decoding or parsing JSON: {e}")
