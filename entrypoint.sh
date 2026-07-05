@@ -40,6 +40,9 @@ interface=${WLAN_IFACE}
 dhcp-range=10.60.10.2,10.60.10.20,255.255.255.0,24h
 EOF
 
+# Enable IP forwarding for NAT routing (WLAN -> ETH)
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
 # Assign static IP to the AP interface
 ip addr flush dev "${WLAN_IFACE}" 2>/dev/null || true
 ip addr add 10.60.10.1/24 dev "${WLAN_IFACE}"
