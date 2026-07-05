@@ -6,7 +6,9 @@ services:
     network_mode: host
     # Privileged is required for hostapd (WiFi chip control),
     # scapy raw sockets, and iptables rule management
-    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     restart: unless-stopped
     environment:
       - MQTT_BROKER=192.168.1.180

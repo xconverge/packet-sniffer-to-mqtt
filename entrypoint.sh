@@ -68,9 +68,12 @@ dnsmasq --conf-file=/etc/dnsmasq.conf --no-daemon --log-facility=- &
 DNSMASQ_PID=$!
 sleep 1
 
-# Trap signals to cleanly shut down child processes
-trap "kill $HOSTAPD_PID $DNSMASQ_PID 2>/dev/null; exit 0" SIGTERM SIGINT
-
-# Run the packet sniffer (foreground)
+# Run the packet sniffer (background so the shell can handle signals)
 echo "Starting mqtt_sniffer..."
-exec python3 /app/mqtt_sniffer.py
+python3 /app/mqtt_sniffer.py &
+SNIFFER_PID=$!
+
+# Trap signals to cleanly shut down child processes
+trap "kill $HOSTAPD_PID $DNSMASQ_PID $SNIFFER_PID 2>/dev/null; exit 0" SIGTERM SIGINT
+
+wait $SNIFFER_PID

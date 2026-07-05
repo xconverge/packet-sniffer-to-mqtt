@@ -1,7 +1,4 @@
-FROM python:3.11-slim
-
-# Pull uv binary from the official image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+FROM python:3.13-slim
 
 # Install system dependencies:
 #   hostapd  - WiFi access point daemon
@@ -23,7 +20,7 @@ WORKDIR /app
 
 # Install Python dependencies first (better layer caching)
 COPY requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY mqtt_sniffer.py .

@@ -1,7 +1,9 @@
 import os
 import paho.mqtt.client as mqtt
 import json
-import scapy.all as scapy
+from scapy.layers.inet import TCP
+from scapy.packet import Raw
+from scapy.sendrecv import sniff
 import time
 
 verbose = os.environ.get("VERBOSE", "false").lower() == "true"
@@ -28,6 +30,13 @@ def connect_mqtt():
             time.sleep(10)
 
 
+def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
+    if reason_code != 0:
+        print(f"Unexpected disconnect (rc={reason_code}), reconnecting...")
+        connect_mqtt()
+
+
+mqtt_client.on_disconnect = on_disconnect
 connect_mqtt()
 
 print(f"Starting on topic: {TOPIC}")
@@ -35,8 +44,8 @@ print(f"Starting on topic: {TOPIC}")
 
 def process_packet(packet):
     try:
-        if packet.haslayer(scapy.TCP) and packet.haslayer(scapy.Raw):
-            payload = packet[scapy.Raw].load
+        if packet.haslayer(TCP) and packet.haslayer(Raw):
+            payload = packet[Raw].load
 
             if verbose:
                 print(f"Raw Payload: {payload}")
@@ -80,7 +89,7 @@ def start_sniffing():
     while True:
         try:
             print(f"Starting packet sniffing on {WLAN_IFACE}...")
-            scapy.sniff(
+            sniff(
                 iface=WLAN_IFACE,
                 filter="tcp port 1883",
                 prn=process_packet,
