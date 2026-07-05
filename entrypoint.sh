@@ -2,9 +2,11 @@
 set -e
 
 WLAN_IFACE="${WLAN_IFACE:-wlan0}"
-ETH_IFACE="${ETH_IFACE:-eth0}"
+ETH_IFACE="${ETH_IFACE:-$(ip route show default | awk '/default/ {print $5; exit}')}"
 AP_SSID="${AP_SSID:-ap_ssid}"
 AP_PASSWORD="${AP_PASSWORD:-ap_password}"
+
+echo "Using uplink interface: ${ETH_IFACE}"
 
 # Generate hostapd config from environment
 cat > /etc/hostapd/hostapd.conf << EOF

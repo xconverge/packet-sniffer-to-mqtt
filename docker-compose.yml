@@ -15,6 +15,5 @@ services:
       - AP_SSID=ap_ssid
       - AP_PASSWORD=ap_password
       - WLAN_IFACE=wlx000f6001e40f
-      - ETH_IFACE=ens18
       - VERBOSE=false
       - PYTHONUNBUFFERED=1
