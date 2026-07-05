@@ -1,0 +1,18 @@
+services:
+  mqtt-sniffer:
+    build: .
+    container_name: mqtt-sniffer
+    # Host networking is required so the container can see wlan0
+    network_mode: host
+    # Privileged is required for hostapd (WiFi chip control),
+    # scapy raw sockets, and iptables rule management
+    privileged: true
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=192.168.1.180
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=captured
+      - AP_SSID=ap_ssid
+      - AP_PASSWORD=ap_password
+      - WLAN_IFACE=wlan0
+      - ETH_IFACE=eth0
