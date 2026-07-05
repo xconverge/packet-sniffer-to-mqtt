@@ -8,10 +8,10 @@ import time
 
 verbose = os.environ.get("VERBOSE", "false").lower() == "true"
 
-MQTT_BROKER = os.environ.get("MQTT_BROKER", "192.168.1.180")
-MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
-TOPIC = os.environ.get("MQTT_TOPIC", "captured")
-WLAN_IFACE = os.environ.get("WLAN_IFACE", "wlan0")
+MQTT_BROKER = os.environ.get("MQTT_BROKER")
+MQTT_PORT = int(os.environ.get("MQTT_PORT"))
+TOPIC = os.environ.get("MQTT_TOPIC")
+WLAN_IFACE = os.environ.get("WLAN_IFACE")
 
 # Initialize MQTT client
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)

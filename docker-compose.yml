@@ -9,12 +9,12 @@ services:
     privileged: true
     restart: unless-stopped
     environment:
-      - MQTT_BROKER=192.168.1.180
+      - MQTT_BROKER=<set to your MQTT broker IP address>
       - MQTT_PORT=1883
-      - MQTT_TOPIC=captured
-      - AP_SSID=ap_ssid
-      - AP_PASSWORD=ap_password
-      - WLAN_IFACE=wlx000f6001e40f
+      - MQTT_TOPIC=<set to your desired MQTT topic>
+      - AP_SSID=<set to your desired WiFi SSID>
+      - AP_PASSWORD=<set to your desired WiFi password>
+      - WLAN_IFACE=<set to your WiFi interface>
       - AP_COUNTRY=US
       - AP_CHANNEL=1
       - VERBOSE=false
