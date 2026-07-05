@@ -5,6 +5,10 @@ WLAN_IFACE="${WLAN_IFACE:-wlan0}"
 ETH_IFACE="${ETH_IFACE:-$(ip route show default | awk '/default/ {print $5; exit}')}"
 AP_SSID="${AP_SSID:-ap_ssid}"
 AP_PASSWORD="${AP_PASSWORD:-ap_password}"
+AP_COUNTRY="${AP_COUNTRY:-US}"
+
+# Set regulatory domain so the adapter can use its full legal TX power
+iw reg set "${AP_COUNTRY}"
 
 echo "Using uplink interface: ${ETH_IFACE}"
 
@@ -16,6 +20,8 @@ ssid=${AP_SSID}
 hw_mode=g
 channel=7
 wmm_enabled=1
+country_code=${AP_COUNTRY}
+ieee80211d=1
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
@@ -40,6 +46,9 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 ip addr flush dev "${WLAN_IFACE}" 2>/dev/null || true
 ip addr add 10.60.10.1/24 dev "${WLAN_IFACE}"
 ip link set "${WLAN_IFACE}" up
+
+# Set TX power to adapter maximum (driver/regulatory cap applies)
+iw dev "${WLAN_IFACE}" set txpower fixed 3000 || true
 
 # Set up NAT so devices on the AP can reach the internet via the uplink
 iptables -t nat -A POSTROUTING -o "${ETH_IFACE}" -j MASQUERADE
