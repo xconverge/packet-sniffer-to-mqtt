@@ -15,7 +15,7 @@ driver=nl80211
 ssid=${AP_SSID}
 hw_mode=g
 channel=7
-wmm_enabled=0
+wmm_enabled=1
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
@@ -23,6 +23,8 @@ wpa=2
 wpa_passphrase=${AP_PASSWORD}
 wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
+ap_max_inactivity=3600
+disassoc_low_ack=0
 EOF
 
 # Generate dnsmasq config from environment
