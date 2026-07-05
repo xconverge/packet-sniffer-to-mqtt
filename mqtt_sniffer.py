@@ -4,7 +4,7 @@ import json
 import scapy.all as scapy
 import time
 
-verbose = False
+verbose = os.environ.get("VERBOSE", "false").lower() == "true"
 
 MQTT_BROKER = os.environ.get("MQTT_BROKER", "192.168.1.180")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
@@ -63,6 +63,7 @@ def process_packet(packet):
                     topic_per_device = f"{TOPIC}/{dsn}"
 
                     mqtt_client.publish(topic_per_device, json.dumps(parsed_payload))
+                    print(f"Published to {topic_per_device}")
                 except (UnicodeDecodeError, json.JSONDecodeError) as e:
                     if verbose:
                         print(f"Error decoding or parsing JSON: {e}")
@@ -77,7 +78,7 @@ def process_packet(packet):
 def start_sniffing():
     while True:
         try:
-            print("Starting packet sniffing on wlan0...")
+            print(f"Starting packet sniffing on {WLAN_IFACE}...")
             scapy.sniff(
                 iface=WLAN_IFACE,
                 filter="tcp port 1883",
