@@ -117,18 +117,40 @@ compose file).
 
 Recent optimizations made to this project:
 
-- **Image size:** dropped `libpcap-dev` from the Dockerfile. On Linux, scapy
-  defaults to native `AF_PACKET` sockets (`conf.use_pcap = False`) and does not
-  need libpcap, so it was pure bloat.
+- **Image size:** replaced `libpcap-dev` (dev headers + static lib) with just
+  the runtime library `libpcap0.8t64`. scapy captures via native `AF_PACKET`
+  sockets, but it still needs libpcap to *compile* the BPF filter string
+  (`tcp port 1883`) — without any libpcap, sniffing fails with "libpcap is not
+  available. Cannot compile filter". The runtime lib alone is enough, and drops
+  the header/toolchain bloat.
 - **Performance:** the sniffer no longer re-serializes payloads. It parses each
   packet only to extract the `dsn`, then publishes the original JSON bytes as-is
   instead of `json.dumps()`-ing a round-tripped object.
+- **Logging:** switched from bare `print()` to the stdlib `logging` module, so
+  every line carries a timestamp and level. `VERBOSE=true` selects `DEBUG`
+  (per-packet detail); otherwise `INFO`.
 - **Robustness:** MQTT reconnection now relies on paho's built-in network-loop
   reconnect (`reconnect_delay_set`) instead of a manual handler that called
   `loop_start()` from the network thread. Required environment variables are
   validated at startup.
+- **Entrypoint reliability:** NAT rules are added idempotently (`iptables -C`
+  before `-A`) so they don't pile up in the host's tables across restarts;
+  hostapd/dnsmasq startup is verified with `kill -0`; and the script now
+  `wait -n`s on all three managed processes, so if any one dies the container
+  exits and `restart: unless-stopped` brings it back instead of lingering
+  half-broken.
+- **Healthcheck:** the Dockerfile adds a `HEALTHCHECK` that reports unhealthy if
+  hostapd is no longer running (checks `/proc` directly to avoid adding
+  `procps`).
+- **Build context:** a `.dockerignore` keeps `.git` and other cruft out of the
+  build context.
 - **Privileges:** replaced `privileged: true` with `cap_add: [NET_ADMIN,
   NET_RAW]` plus host-side `ip_forward`, with privileged left as a documented
   fallback.
+
+## License
+
+Released under the [MIT License](LICENSE) — provided "as is", without warranty
+of any kind.
 </content>
 </invoke>
