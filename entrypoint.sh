@@ -48,14 +48,18 @@ EOF
 # the unprivileged (cap_add) setup:
 #     sudo sysctl -w net.ipv4.ip_forward=1
 # (persist it in /etc/sysctl.d/99-mqtt-sniffer.conf to survive reboots).
-# The [ -w ] test avoids a noisy shell "Read-only file system" redirect error
-# in the unprivileged case.
-if [ -w /proc/sys/net/ipv4/ip_forward ] && echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null; then
+#
+# Check the current VALUE, not writability: under host networking the file is
+# read-only to an unprivileged container even when the host has already set it
+# to 1, so testing writability would warn about a non-problem.
+if [ "$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null)" = "1" ]; then
+    echo "net.ipv4.ip_forward is already enabled."
+elif [ -w /proc/sys/net/ipv4/ip_forward ] && echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null; then
     echo "Enabled net.ipv4.ip_forward inside the container."
 else
-    echo "NOTE: net.ipv4.ip_forward is not writable here (expected when unprivileged)."
-    echo "      It MUST be enabled on the host for NAT to work:"
-    echo "          sudo sysctl -w net.ipv4.ip_forward=1"
+    echo "WARNING: net.ipv4.ip_forward is 0 and cannot be set from here."
+    echo "         NAT will NOT work until it is enabled on the host:"
+    echo "             sudo sysctl -w net.ipv4.ip_forward=1"
 fi
 
 # Assign static IP to the AP interface
