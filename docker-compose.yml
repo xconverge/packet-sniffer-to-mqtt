@@ -4,9 +4,21 @@ services:
     container_name: mqtt-sniffer
     # Host networking is required so the container can see the WiFi adapter
     network_mode: host
-    # Privileged is required for hostapd (WiFi chip control),
-    # scapy raw sockets, and iptables rule management
-    privileged: true
+    # Instead of full `privileged: true`, grant only the capabilities actually
+    # needed:
+    #   NET_ADMIN - hostapd, iw, ip, and iptables
+    #   NET_RAW   - scapy raw packet sockets
+    # This requires net.ipv4.ip_forward to be enabled on the HOST (see README),
+    # since /proc/sys/net is read-only to an unprivileged container under host
+    # networking. hostapd may also need /dev/rfkill (uncomment `devices` below).
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    # devices:
+    #   - /dev/rfkill
+    # Fallback: if your adapter/driver won't come up with the capabilities
+    # above, comment out `cap_add` and use full privileged mode instead:
+    # privileged: true
     restart: unless-stopped
     environment:
       - MQTT_BROKER=<set to your MQTT broker IP address>

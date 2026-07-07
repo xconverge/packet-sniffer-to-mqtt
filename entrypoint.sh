@@ -40,8 +40,18 @@ interface=${WLAN_IFACE}
 dhcp-range=10.60.10.2,10.60.10.20,255.255.255.0,24h
 EOF
 
-# Enable IP forwarding for NAT routing (WLAN -> ETH)
-echo 1 > /proc/sys/net/ipv4/ip_forward
+# Enable IP forwarding for NAT routing (WLAN -> ETH).
+#
+# With network_mode: host the container shares the host's network namespace, so
+# /proc/sys/net is read-only unless the container is fully privileged. We try to
+# set it here for the privileged case, but this MUST be enabled on the host for
+# the unprivileged (cap_add) setup:
+#     sudo sysctl -w net.ipv4.ip_forward=1
+# (persist it in /etc/sysctl.d/99-mqtt-sniffer.conf to survive reboots).
+if ! echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null; then
+    echo "WARNING: could not set net.ipv4.ip_forward (expected when running unprivileged)."
+    echo "         Ensure it is enabled on the host: sudo sysctl -w net.ipv4.ip_forward=1"
+fi
 
 # Assign static IP to the AP interface
 ip addr flush dev "${WLAN_IFACE}" 2>/dev/null || true

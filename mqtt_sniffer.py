@@ -8,13 +8,24 @@ import time
 
 verbose = os.environ.get("VERBOSE", "false").lower() == "true"
 
-MQTT_BROKER = os.environ.get("MQTT_BROKER")
-MQTT_PORT = int(os.environ.get("MQTT_PORT"))
-TOPIC = os.environ.get("MQTT_TOPIC")
-WLAN_IFACE = os.environ.get("WLAN_IFACE")
 
-# Initialize MQTT client
+def _require_env(name):
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(f"Required environment variable {name} is not set")
+    return value
+
+
+MQTT_BROKER = _require_env("MQTT_BROKER")
+MQTT_PORT = int(_require_env("MQTT_PORT"))
+TOPIC = _require_env("MQTT_TOPIC")
+WLAN_IFACE = _require_env("WLAN_IFACE")
+
+# Initialize MQTT client. paho's network loop handles reconnection on its own
+# once loop_start() is running, so we only need to configure the backoff and
+# make the initial connection.
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+mqtt_client.reconnect_delay_set(min_delay=1, max_delay=120)
 
 
 def connect_mqtt():
@@ -22,7 +33,7 @@ def connect_mqtt():
         try:
             print("Connecting to MQTT broker...")
             mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-            mqtt_client.loop_start()  # Keep connection alive in the background
+            mqtt_client.loop_start()  # Keep connection alive (and auto-reconnect)
             print(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
             return
         except Exception as e:
@@ -30,13 +41,6 @@ def connect_mqtt():
             time.sleep(10)
 
 
-def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
-    if reason_code != 0:
-        print(f"Unexpected disconnect (rc={reason_code}), reconnecting...")
-        connect_mqtt()
-
-
-mqtt_client.on_disconnect = on_disconnect
 connect_mqtt()
 
 print(f"Starting on topic: {TOPIC}")
@@ -71,7 +75,9 @@ def process_packet(packet):
                     # Construct topic using DSN
                     topic_per_device = f"{TOPIC}/{dsn}"
 
-                    mqtt_client.publish(topic_per_device, json.dumps(parsed_payload))
+                    # Publish the original bytes as-is; we only parsed above to
+                    # pull out the DSN, so there's no need to re-serialize.
+                    mqtt_client.publish(topic_per_device, json_payload)
                     if verbose:
                         print(f"Published to {topic_per_device}")
                 except (UnicodeDecodeError, json.JSONDecodeError) as e:
