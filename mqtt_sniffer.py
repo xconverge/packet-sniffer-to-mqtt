@@ -1,4 +1,5 @@
 import os
+import logging
 import paho.mqtt.client as mqtt
 import json
 from scapy.layers.inet import TCP
@@ -6,7 +7,16 @@ from scapy.packet import Raw
 from scapy.sendrecv import sniff
 import time
 
+# Use the stdlib logging module: this gives every line a timestamp and level
+# for free, and the VERBOSE env var simply selects DEBUG vs INFO instead of
+# guarding each noisy line with `if verbose`.
 verbose = os.environ.get("VERBOSE", "false").lower() == "true"
+logging.basicConfig(
+    level=logging.DEBUG if verbose else logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger("mqtt_sniffer")
 
 
 def _require_env(name):
@@ -31,19 +41,19 @@ mqtt_client.reconnect_delay_set(min_delay=1, max_delay=120)
 def connect_mqtt():
     while True:
         try:
-            print("Connecting to MQTT broker...")
+            log.info("Connecting to MQTT broker...")
             mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
             mqtt_client.loop_start()  # Keep connection alive (and auto-reconnect)
-            print(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
+            log.info("Connected to MQTT broker at %s:%s", MQTT_BROKER, MQTT_PORT)
             return
         except Exception as e:
-            print(f"MQTT connection failed: {e}")
+            log.warning("MQTT connection failed: %s", e)
             time.sleep(10)
 
 
 connect_mqtt()
 
-print(f"Starting on topic: {TOPIC}")
+log.info("Starting on topic: %s", TOPIC)
 
 
 def process_packet(packet):
@@ -51,8 +61,7 @@ def process_packet(packet):
         if packet.haslayer(TCP) and packet.haslayer(Raw):
             payload = packet[Raw].load
 
-            if verbose:
-                print(f"Raw Payload: {payload}")
+            log.debug("Raw payload: %s", payload)
 
             # Find the start of JSON data
             json_start_index = payload.find(b"{")
@@ -64,10 +73,10 @@ def process_packet(packet):
                     decoded_payload = json_payload.decode("utf-8", errors="ignore")
                     parsed_payload = json.loads(decoded_payload)
 
-                    if verbose:
-                        print(
-                            f"Decoded JSON Payload: {json.dumps(parsed_payload, indent=2)}"
-                        )
+                    log.debug(
+                        "Decoded JSON payload: %s",
+                        json.dumps(parsed_payload, indent=2),
+                    )
 
                     # Extract DSN
                     dsn = parsed_payload.get("device", {}).get("dsn", "unknown")
@@ -78,23 +87,19 @@ def process_packet(packet):
                     # Publish the original bytes as-is; we only parsed above to
                     # pull out the DSN, so there's no need to re-serialize.
                     mqtt_client.publish(topic_per_device, json_payload)
-                    if verbose:
-                        print(f"Published to {topic_per_device}")
+                    log.debug("Published to %s", topic_per_device)
                 except (UnicodeDecodeError, json.JSONDecodeError) as e:
-                    if verbose:
-                        print(f"Error decoding or parsing JSON: {e}")
+                    log.debug("Error decoding or parsing JSON: %s", e)
             else:
-                if verbose:
-                    print("No JSON found in the payload.")
+                log.debug("No JSON found in the payload.")
     except Exception as e:
-        if verbose:
-            print(f"Error processing packet: {e}")
+        log.debug("Error processing packet: %s", e)
 
 
 def start_sniffing():
     while True:
         try:
-            print(f"Starting packet sniffing on {WLAN_IFACE}...")
+            log.info("Starting packet sniffing on %s...", WLAN_IFACE)
             sniff(
                 iface=WLAN_IFACE,
                 filter="tcp port 1883",
@@ -102,13 +107,13 @@ def start_sniffing():
                 store=False,
             )
         except Exception as e:
-            print(f"Error in sniffing: {e}")
+            log.error("Error in sniffing: %s", e)
             time.sleep(10)
 
 
 try:
     start_sniffing()
 except KeyboardInterrupt:
-    print("Stopping script gracefully...")
+    log.info("Stopping script gracefully...")
     mqtt_client.loop_stop()
     mqtt_client.disconnect()

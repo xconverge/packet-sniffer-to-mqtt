@@ -48,9 +48,14 @@ EOF
 # the unprivileged (cap_add) setup:
 #     sudo sysctl -w net.ipv4.ip_forward=1
 # (persist it in /etc/sysctl.d/99-mqtt-sniffer.conf to survive reboots).
-if ! echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null; then
-    echo "WARNING: could not set net.ipv4.ip_forward (expected when running unprivileged)."
-    echo "         Ensure it is enabled on the host: sudo sysctl -w net.ipv4.ip_forward=1"
+# The [ -w ] test avoids a noisy shell "Read-only file system" redirect error
+# in the unprivileged case.
+if [ -w /proc/sys/net/ipv4/ip_forward ] && echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null; then
+    echo "Enabled net.ipv4.ip_forward inside the container."
+else
+    echo "NOTE: net.ipv4.ip_forward is not writable here (expected when unprivileged)."
+    echo "      It MUST be enabled on the host for NAT to work:"
+    echo "          sudo sysctl -w net.ipv4.ip_forward=1"
 fi
 
 # Assign static IP to the AP interface
@@ -61,22 +66,37 @@ ip link set "${WLAN_IFACE}" up
 # Set TX power to adapter maximum (driver/regulatory cap applies)
 iw dev "${WLAN_IFACE}" set txpower fixed 3000 || true
 
-# Set up NAT so devices on the AP can reach the internet via the uplink
-iptables -t nat -A POSTROUTING -o "${ETH_IFACE}" -j MASQUERADE
-iptables -A FORWARD -i "${ETH_IFACE}" -o "${WLAN_IFACE}" -m state --state RELATED,ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i "${WLAN_IFACE}" -o "${ETH_IFACE}" -j ACCEPT
+# Set up NAT so devices on the AP can reach the internet via the uplink.
+# Under host networking these rules live in the HOST's tables and persist across
+# container restarts, so add each only if it isn't already present (-C check)
+# to avoid accumulating duplicates.
+iptables -t nat -C POSTROUTING -o "${ETH_IFACE}" -j MASQUERADE 2>/dev/null \
+    || iptables -t nat -A POSTROUTING -o "${ETH_IFACE}" -j MASQUERADE
+iptables -C FORWARD -i "${ETH_IFACE}" -o "${WLAN_IFACE}" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null \
+    || iptables -A FORWARD -i "${ETH_IFACE}" -o "${WLAN_IFACE}" -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -C FORWARD -i "${WLAN_IFACE}" -o "${ETH_IFACE}" -j ACCEPT 2>/dev/null \
+    || iptables -A FORWARD -i "${WLAN_IFACE}" -o "${ETH_IFACE}" -j ACCEPT
 
 # Start hostapd (WiFi access point)
 echo "Starting hostapd..."
 hostapd /etc/hostapd/hostapd.conf &
 HOSTAPD_PID=$!
 sleep 2
+if ! kill -0 "$HOSTAPD_PID" 2>/dev/null; then
+    echo "ERROR: hostapd failed to start; check the interface and config above." >&2
+    exit 1
+fi
 
 # Start dnsmasq (DHCP server)
 echo "Starting dnsmasq..."
 dnsmasq --conf-file=/etc/dnsmasq.conf --no-daemon --log-facility=- &
 DNSMASQ_PID=$!
 sleep 1
+if ! kill -0 "$DNSMASQ_PID" 2>/dev/null; then
+    echo "ERROR: dnsmasq failed to start." >&2
+    kill "$HOSTAPD_PID" 2>/dev/null || true
+    exit 1
+fi
 
 # Run the packet sniffer (background so the shell can handle signals)
 echo "Starting mqtt_sniffer..."
@@ -86,4 +106,9 @@ SNIFFER_PID=$!
 # Trap signals to cleanly shut down child processes
 trap "kill $HOSTAPD_PID $DNSMASQ_PID $SNIFFER_PID 2>/dev/null; exit 0" SIGTERM SIGINT
 
-wait $SNIFFER_PID
+# Exit (and let Docker restart us) if ANY of the three processes dies, rather
+# than lingering as a half-broken container.
+wait -n "$HOSTAPD_PID" "$DNSMASQ_PID" "$SNIFFER_PID"
+echo "A managed process exited; shutting down so the container can restart." >&2
+kill "$HOSTAPD_PID" "$DNSMASQ_PID" "$SNIFFER_PID" 2>/dev/null || true
+exit 1
