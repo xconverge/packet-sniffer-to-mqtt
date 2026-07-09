@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+echo "##########################################################"
+echo "  packet-sniffer-to-mqtt $(date '+%Y-%m-%d %H:%M:%S %Z')"
+echo "##########################################################"
+
 WLAN_IFACE="${WLAN_IFACE:-wlan0}"
 ETH_IFACE="${ETH_IFACE:-$(ip route show default | awk '/default/ {print $5; exit}')}"
 AP_SSID="${AP_SSID:-ap_ssid}"
