@@ -42,7 +42,7 @@ EOF
 # Generate dnsmasq config from environment
 cat > /etc/dnsmasq.conf << EOF
 interface=${WLAN_IFACE}
-dhcp-range=10.60.10.2,10.60.10.20,255.255.255.0,24h
+dhcp-range=10.60.10.2,10.60.10.20,255.255.255.0,7d
 EOF
 
 # Enable IP forwarding for NAT routing (WLAN -> ETH).
