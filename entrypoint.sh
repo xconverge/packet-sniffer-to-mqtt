@@ -69,7 +69,8 @@ ip addr add 10.60.10.1/24 dev "${WLAN_IFACE}"
 ip link set "${WLAN_IFACE}" up
 
 # Set TX power
-iw dev "${WLAN_IFACE}" set txpower fixed "${AP_TXPOWER}" || true
+PHY="$(iw dev "${WLAN_IFACE}" info | awk '/wiphy/ {print "phy"$2; exit}')"
+iw phy "${PHY}" set txpower fixed "${AP_TXPOWER}" || true
 
 # Set up NAT so devices on the AP can reach the internet via the uplink.
 # Under host networking these rules live in the HOST's tables and persist across
