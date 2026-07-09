@@ -7,6 +7,7 @@ AP_SSID="${AP_SSID:-ap_ssid}"
 AP_PASSWORD="${AP_PASSWORD:-ap_password}"
 AP_COUNTRY="${AP_COUNTRY:-US}"
 AP_CHANNEL="${AP_CHANNEL:-6}"
+AP_TXPOWER="${AP_TXPOWER:-2000}"
 
 # Set regulatory domain so the adapter can use its full legal TX power
 iw reg set "${AP_COUNTRY}"
@@ -67,8 +68,8 @@ ip addr flush dev "${WLAN_IFACE}" 2>/dev/null || true
 ip addr add 10.60.10.1/24 dev "${WLAN_IFACE}"
 ip link set "${WLAN_IFACE}" up
 
-# Set TX power to adapter maximum (driver/regulatory cap applies)
-iw dev "${WLAN_IFACE}" set txpower fixed 3000 || true
+# Set TX power
+iw dev "${WLAN_IFACE}" set txpower fixed "${AP_TXPOWER}" || true
 
 # Set up NAT so devices on the AP can reach the internet via the uplink.
 # Under host networking these rules live in the HOST's tables and persist across
