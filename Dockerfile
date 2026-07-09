@@ -8,15 +8,14 @@ FROM python:3.13-slim
 #   iw       - regulatory domain and TX power control
 #
 # scapy captures via native AF_PACKET sockets, but it still needs libpcap to
-# COMPILE the BPF filter string ("tcp port 1883"). We install only the runtime
-# library (libpcap0.8t64), not the -dev headers, which keeps the image small.
+# COMPILE the BPF filter string ("tcp port 1883")
 RUN apt-get update && apt-get install -y --no-install-recommends \
         hostapd \
         dnsmasq \
         iptables \
         iproute2 \
         iw \
-        libpcap0.8t64 \
+        libpcap0.8 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
